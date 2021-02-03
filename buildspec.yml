@@ -21,7 +21,11 @@ phases:
       - ls -l
       - TAG="$REPOSITORY_NAME.$REPOSITORY_BRANCH.$ENVIRONMENT_NAME.$(date +%Y-%m-%d.%H.%M.%S).$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | head -c 8)"
       - sed -i 's@CONTAINER_IMAGE@'"$REPOSITORY_URI:$TAG"'@' hello-k8s.yml
+      - echo Logging in to Amazon ECR...
       - $(aws ecr get-login --no-include-email)
+      # Docker Hub へのログインしないと、Too Many Requestsで登録できない。
+      - echo Logging in to Docker Hub...
+      - echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin
       - export KUBECONFIG=$HOME/.kube/config
   build:
     commands:
@@ -30,11 +34,13 @@ phases:
       - docker info
       - echo "docker build --tag $REPOSITORY_URI:$TAG ."
       - docker build --tag $REPOSITORY_URI:$TAG .
-
+      - docker images
   post_build:
     commands:
       - pwd
       - ls -l
+      - docker images
+      - docker echo push $REPOSITORY_URI:$TAG
       - docker push $REPOSITORY_URI:$TAG
       - CREDENTIALS=$(aws sts assume-role --role-arn $EKS_KUBECTL_ROLE_ARN --role-session-name codebuild-kubectl --duration-seconds 900)
       - export AWS_ACCESS_KEY_ID="$(echo ${CREDENTIALS} | jq -r '.Credentials.AccessKeyId')"
