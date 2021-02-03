@@ -27,6 +27,7 @@ phases:
     commands:
       - pwd
       - ls -l
+      - docker info
       - echo "docker build --tag $REPOSITORY_URI:$TAG ."
       - docker build --tag $REPOSITORY_URI:$TAG .
 
